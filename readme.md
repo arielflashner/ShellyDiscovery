@@ -1,5 +1,5 @@
 # Download and run a release
-1. Download a release from https://github.com/arielflashner/ShellyDiscovery/release
+1. Download a release from https://github.com/arielflashner/ShellyDiscovery/releases
 2. Extract zip file
 3. Run ShellyDiscovery.exe
 
