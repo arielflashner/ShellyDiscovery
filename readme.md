@@ -1,0 +1,1 @@
+clone / download code and run "dotnet run" or "dotnet publish -c Release" in order to build an executable
