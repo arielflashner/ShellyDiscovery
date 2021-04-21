@@ -100,6 +100,10 @@ namespace ShellyDiscovery
                 }
             }
 
+            if (string.IsNullOrWhiteSpace(groupBy)) {
+                return;
+            }
+            
             var groupedData = data.GroupBy(i => i.Value.SelectToken(groupBy));
             foreach (var item in groupedData)
             {
