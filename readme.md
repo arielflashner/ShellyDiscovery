@@ -4,8 +4,10 @@
 3. Run ShellyDiscovery.exe
 
 The application should try to fetch the shelly device and relay names and list them along with their IP address:
-![image](https://user-images.githubusercontent.com/3799599/115187004-47f61380-a0eb-11eb-9e07-75a0534df426.png)
+![image](https://user-images.githubusercontent.com/3799599/115608480-fddd7f80-a2ee-11eb-8c2d-9aa54678c7fb.png)
 
+In case you chose to to show the data group by a certain property, a summary will be displayed once the scan is finished  
+Nested attribute names can be used like "device.type"
 
 # Run from source
 ````
