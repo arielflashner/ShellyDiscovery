@@ -1,9 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace ShellyDiscovery
 {
@@ -11,12 +16,41 @@ namespace ShellyDiscovery
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Enter IP address to start scan from (for example, 192.168.1.10):");
+            Console.WriteLine("Enter single IP address or range to scan (for example, 192.168.1.10-20):");
             var startIp = Console.ReadLine();
+            var endIp = 255;
+            if (startIp.Contains("-")) {
+                var ips = startIp.Split("-");
+                startIp = ips[0];
+                if (ips.Length != 2) {
+                    Console.WriteLine("Invalid range specified - only one dash please ...");
+                    return;
+                }
+
+                if (!int.TryParse(ips[1], out endIp)) {
+                    Console.WriteLine("Unable to parse upper range specified '" + ips[1] + "'");
+                    return;
+                }
+
+                if (endIp < 0 || endIp > 255) {
+                    Console.WriteLine("Upper IP range should be between 0-255");
+                    return;
+                }
+            }
+            
+            Console.WriteLine("Would you like to show devices grouped according to something? for example device.type");
+            var groupBy = Console.ReadLine();
 
             if (!IPAddress.TryParse(startIp, out var ip))
             {
                 Console.WriteLine("Unable to parse ip '" + startIp + "'");
+                return;
+            }
+
+            var ipBytes = ip.GetAddressBytes();
+            var ipPrefix = ipBytes[0] + "." + ipBytes[1] + "." + ipBytes[2] + ".";
+            if (ipBytes[3] > endIp) {
+                Console.WriteLine("Lower IP range is higher than upper range");
                 return;
             }
 
@@ -28,15 +62,13 @@ namespace ShellyDiscovery
                 password = Console.ReadLine();
             }
 
-            var ipBytes = ip.GetAddressBytes();
-            var ipPrefix = ipBytes[0] + "." + ipBytes[1] + "." + ipBytes[2] + ".";
-
             var client = new HttpClient();
             if (!string.IsNullOrWhiteSpace(username))
                 client.DefaultRequestHeaders.Add($"Authorization", $"Basic {Base64Encode($"{username}:{password}")}");
 
             client.Timeout = TimeSpan.FromMilliseconds(600);
-            for (int i = ipBytes[3]; i < 255; i++)
+            var data = new Dictionary<string, dynamic>();
+            for (int i = ipBytes[3]; i < endIp; i++)
             {
                 var ipString = ipPrefix + i.ToString();
                 try
@@ -51,7 +83,8 @@ namespace ShellyDiscovery
                         continue;
                     }
 
-                    var settings = JsonSerializer.Deserialize<SettingsResponse>(response.Content.ReadAsStringAsync().Result);
+                    var settings = JsonConvert.DeserializeObject<dynamic>(response.Content.ReadAsStringAsync().Result);
+                    data.Add(ipString, settings);
 
                     Console.WriteLine(ipString + "\t" + settings.name + GetRelayNames(settings));
                     Thread.Sleep(100);
@@ -66,9 +99,23 @@ namespace ShellyDiscovery
                     Console.WriteLine(ipString + "\t" + "Error: " + e.Message);
                 }
             }
+
+            var groupedData = data.GroupBy(i => i.Value.SelectToken(groupBy));
+            foreach (var item in groupedData)
+            {
+                var groupValue = item.Key;
+                Console.WriteLine(groupValue + ":");
+                foreach (var device in item.ToArray())
+                {
+                    var deviceIp = device.Key;
+                    var deviceName = device.Value.name;
+                    Console.WriteLine("\t" + deviceIp + "\t" + deviceName);
+                }
+                
+            }
         }
 
-        private static string GetRelayNames(SettingsResponse settings) {
+        private static string GetRelayNames(dynamic settings) {
             var relayNames = "";
             foreach (var relay in settings.relays)
             {
